@@ -33,8 +33,9 @@ if [ -z "$CERT_INFO" ]; then
   exit 2
 fi
 
-# Extract expiry date
-EXPIRY_DATE=$(echo "$CERT_INFO" | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//')
+# Failed handshakes may still print non-certificate text. Preserve the JSON
+# error path below instead of letting errexit/pipefail terminate the check.
+EXPIRY_DATE=$(echo "$CERT_INFO" | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//') || EXPIRY_DATE=""
 
 if [ -z "$EXPIRY_DATE" ]; then
   if [ "$VERB" = "diagnose" ]; then
@@ -119,11 +120,11 @@ case "$VERB" in
     NOT_AFTER=$(echo "$CERT_DETAILS" | sed -n 's/^notAfter=\(.*\)/\1/p')
 
     # SANs - extract from the extension output
-    SANS=$(echo "$CERT_DETAILS" | grep -A1 "Subject Alternative Name" | grep -v "Subject Alternative Name" | sed 's/^ *//' | sed 's/"/\\"/g')
+    SANS=$(echo "$CERT_DETAILS" | grep -A1 "Subject Alternative Name" | grep -v "Subject Alternative Name" | sed 's/^ *//' | sed 's/"/\\"/g') || SANS=""
     SANS="${SANS:-none found}"
 
     # Serial number
-    SERIAL=$(echo "$CERT_INFO" | openssl x509 -noout -serial 2>/dev/null | sed 's/serial=//')
+    SERIAL=$(echo "$CERT_INFO" | openssl x509 -noout -serial 2>/dev/null | sed 's/serial=//') || SERIAL=""
     SERIAL="${SERIAL:-unknown}"
 
     FINDINGS='['
